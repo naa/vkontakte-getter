@@ -1,0 +1,11 @@
+#summary Где искать дополнительную информацию о проекте
+#labels Featured
+
+= Главная страница =
+
+Главная страница проекта - [http://vkontakte.net.ru] 
+
+
+Все ресурсы на [http://code.google.com/p/vkontakte-getter] - для разработчиков!
+
+
