@@ -1,91 +1,116 @@
 
 <html>
-	<head>
-		<title>Мои друзья</title>
-		<meta http-equiv="content-type" content="text/html; charset=windows-1251" />
-		<script type="text/javascript" src="canvas.js"></script> 
-		<style>
-			div {font-size: 12px; color:#808080; white-space:nowrap;}
-			div.cir_head {font-size: 16px; color:#00ff00; white-space:nowrap;}
-			a.top {font-size:14px; color:black;}
-			a {font-size: 12px; color:#808080;}
-		</style> 
+<head>
+<title>Мои друзья</title>
+<meta http-equiv="content-type" content="text/html; charset=windows-1251" />
+<script type="text/javascript" src="http://vkontakte.net.ru/canvas.js"></script> 
+<link rel="stylesheet" href="http://vkontakte.net.ru/style.css" type="text/css" />
 
 </head>
 
-<BODY onload="ieCanvasInit();">
-		<div style="{position:absolute; top:0px; left:0px;}"><a class='top' href="javascript:void('')" onclick="show_map();">Карта</a></div> 
-		<div style="{position:absolute; top:0px; left:100px;}"><a class='top' href="javascript:void('')" onclick="show_stat();">Статистика</a></div>
-		<div style="{position:absolute; top:0px; left:200px;}"><a class='top' href="javascript:void('')" onclick="show_code();">Код для вставки в блог</a></div>
-		<div style="{position:absolute; top:0px; left:380px;}"><a class='top' href="http://anton_nazarov.fatal.ru">На страницу автора</a></div>
+<BODY onload="init();">
+<h1 style="{position:absolute; top:0px; left:0px; width:1200px;}" id="my_name" align=center> </h1>
+<div width=1200px height=60px> &nbsp; </div>
+<div style="{position:absolute; top:30px; left:0px;}"><a class='top' href="javascript:void('')" onclick="show_group(0);">Карта друзей</a></div> 
+<div style="{position:absolute; top:30px; left:110px;}"><a class='top' href="javascript:void('')" onclick="show_group(1);">Статистика</a></div>
+<div style="{position:absolute; top:30px; left:210px;}"><a class='top' href="javascript:void('')" onclick="show_group(2);">Код для вставки в блог</a></div>
+<div style="{position:absolute; top:30px; left:410px;}"><a class='top' href="javascript:void('')" onclick="show_group(3);">Группы</a></div>
+<div style="{position:absolute; top:30px; left:475px;}"><a class='top' href="javascript:void('')" onclick="show_group(4);">Интересы</a></div>
+<div style="{position:absolute; top:30px; left:570px;}"><a class='top' href="http://vkontakte.net.ru">На главную страницу</a></div>
+<div style="{position:absolute; top:50px; left:0px;}">
+<script type="text/javascript"><!--
+google_ad_client = "pub-9997957526313461";
+google_ad_width = 728;
+google_ad_height = 15;
+google_ad_format = "728x15_0ads_al_s";
+google_ad_channel = "";
+google_color_border = "FFFFFF";
+google_color_bg = "FFFFFF";
+google_color_link = "336699";
+google_color_text = "000000";
+google_color_url = "008000";
+//-->
+</script>
+<script type="text/javascript"
+  src="http://pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+</div>
 
+<!--	<img src="result.png" /> -->
+<SCRIPT type="text/javascript">
+var persons;
+var my_name;
+function init() {
+       document.getElementById('my_name').innerHTML=my_name;	
+	for (idn in persons) {
+		person=persons[idn];
+		if (person!='dummy') {
+			newDiv=document.createElement("div");
+			var st=newDiv.style;
+			st.position='absolute';
+			st.left=person.right==0 ? person.x : person.x-80;
+			st.visibility='visible';			
+			st.top=person.y+15;
+			newDiv.innerHTML='<a onmouseover=\"show(\''+person.idnum+
+				'\');\" onmouseout=\"hide(\''+person.idnum+
+				'\');\" id=\'p'+person.idnum+'\' href=\"http://vkontakte.ru/profile.php?id='+
+				person.idnum+'\">'+
+				person.name+' ('+person.friends_ids.length+')</a>';
+			document.getElementById('group0').appendChild(newDiv);
+		}
+	}
+	ieCanvasInit(); 
+}
 
-	<!--	<img src="result.png" /> -->
-	<SCRIPT type="text/javascript">
-			window.onload = function() { ieCanvasInit(); 
-			}
-	
-			var persons;
-			function show_stat() {
-				document.getElementById('canvas_div').style.display='none';
-				document.getElementById('stats').style.display='block';
-				document.getElementById('code').style.display='none';
+function show_group(num) {
+	for (var i=0; i<5; i++) {
+		document.getElementById('group'+i).style.display='none';
+	}
+	document.getElementById('group'+num).style.display='block';
+}
 
+function Person(name,idnum,x,y,right,friends_ids) {
+	this.name=name;
+	this.idnum=idnum;
+	this.friends_ids=friends_ids;
+	this.x=x;
+	this.y=y;
+	this.right=right;
+}
+function draw(ctx,idnum,textcolor) {
+	document.getElementById('p'+idnum).style.color=textcolor;
+	var sel=persons[idnum];
+	var prs_id='';
+	var pers;
+	ctx.beginPath();
+	ctx.arc(sel.x, sel.y, 2, 0, Math.PI*2, true);
+	for (var i=0; i<sel.friends_ids.length; i++) {
+		prs_id=sel.friends_ids[i];
+		pers=persons[prs_id];
+		document.getElementById('p'+prs_id).style.color=textcolor;
+		ctx.moveTo(sel.x,sel.y);
+		ctx.lineTo(pers.x,pers.y);
+		ctx.arc(pers.x, pers.y, 2, 0, Math.PI*2, true);
 
-			}
-			function show_map() {
-				document.getElementById('canvas_div').style.display='block';
-				document.getElementById('stats').style.display='none';
-				document.getElementById('code').style.display='none';
-
-			}
-			function show_code() {
-				document.getElementById('canvas_div').style.display='none';
-				document.getElementById('stats').style.display='none';
-				document.getElementById('code').style.display='block';
-
-			}
-			function Person(name,idnum,x,y,friends_ids) {
-				this.name=name;
-				this.idnum=idnum;
-				this.friends_ids=friends_ids;
-				this.x=x;
-				this.y=y;
-			}
-			function draw(ctx,idnum,textcolor) {
-				document.getElementById('p'+idnum).style.color=textcolor;
-				var sel=persons[idnum];
-				var prs_id='';
-				var pers;
-				ctx.beginPath();
-				ctx.arc(sel.x, sel.y, 2, 0, Math.PI*2, true);
-				for (var i=0; i<sel.friends_ids.length; i++) {
-					prs_id=sel.friends_ids[i];
-					pers=persons[prs_id];
-					document.getElementById('p'+prs_id).style.color=textcolor;
-					ctx.moveTo(sel.x,sel.y);
-					ctx.lineTo(pers.x,pers.y);
-					ctx.arc(pers.x, pers.y, 2, 0, Math.PI*2, true);
-
-				}	
-				ctx.moveTo(sel.x,sel.y);
-				ctx.closePath();
-				ctx.stroke();
-			}
-			function show(idnum) {
-				var canvas = document.getElementById('canvas');
-				var ctx = canvas.getContext('2d');
-				ctx.strokeStyle='#0000ff';
-				draw(ctx,idnum,'#ff0000');
-			}
-			function hide(idnum) {
-				var canvas = document.getElementById('canvas');
-				var ctx = canvas.getContext('2d');
-				ctx.fillStyle = 'white';
-				ctx.fillRect(0, 0, 1200, 1200);
-				ctx.strokeStyle='white';
-				draw(ctx,idnum,'#808080');
-			}
+	}	
+	ctx.moveTo(sel.x,sel.y);
+	ctx.closePath();
+	ctx.stroke();
+}
+function show(idnum) {
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	ctx.strokeStyle='#0000ff';
+	draw(ctx,idnum,'#ff0000');
+}
+function hide(idnum) {
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	ctx.fillStyle = 'white';
+	ctx.fillRect(0, 0, 1200, 1200);
+	ctx.strokeStyle='white';
+	draw(ctx,idnum,'#2b587a');
+}
 
 
 

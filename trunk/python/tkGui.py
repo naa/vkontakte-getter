@@ -16,24 +16,32 @@ class MyDialog:
 		Label(frame, text=u'Введите свой email и пароль,\n которые вы используете на сайте\n vkontakte.ru, чтобы построить карту друзей').grid(row=0,columnspan=2)
 		Label(frame, text=u"Email:").grid(row=1,sticky=W)
 		Label(frame, text=u"Пароль:").grid(row=2,sticky=W)
+		Label(frame, text=u'Перезагрузить все страницы').grid(row=3,sticky=W)
+		Label(frame, text=u'Выложить результаты на vkontakte.net.ru').grid(row=4,sticky=W)
 
 		self.message = StringVar()
 		self.info=Label(master, textvariable=self.message)
-		self.info.grid(row=3,columnspan=2)
+		self.info.grid(row=5,columnspan=2)
 		self.message.set("   ")
 
 		self.e1 = Entry(frame)
 		self.e2 = Entry(frame,show="*")
-		
 		self.e1.grid(row=1, column=1)
 		self.e2.grid(row=2, column=1)
+		self.reload=IntVar()
+		self.reload.set(0)
+		Checkbutton(frame,variable=self.reload).grid(row=3,column=1)
+		self.upload=IntVar()
+		self.upload.set(1)
+		Checkbutton(frame,variable=self.upload).grid(row=4,column=1)
+	
 
 		w = Button(frame, text="OK", width=10, command=self.ok, default=ACTIVE)
 #		w.pack(side=LEFT, padx=5, pady=5)
-		w.grid(row=4)
+		w.grid(row=6)
 		w = Button(frame, text="Exit", width=10, command=self.cancel)
 #		w.pack(side=LEFT, padx=5, pady=5)
-		w.grid(row=4,column=1)
+		w.grid(row=6,column=1)
 
 	def ok(self):
 		pass
