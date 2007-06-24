@@ -9,15 +9,15 @@ import cookielib, urllib2, urllib, os, threading
 import webbrowser
 import MultipartPostHandler
 
-filename='uploadfile.rar'
+filename='tkGui.py'
 
 cookies = cookielib.CookieJar()
 
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies),
                                 MultipartPostHandler.MultipartPostHandler)
-opener.open('http://vkontakte.net.ru/test/index.cgi')
-params = {'upload_file':open(filename,'rb'),'submit':'true'}
+#opener.open('http://vkontakte.net.ru/test/upload.cgi')
+params = {'upload_file':open(filename,'rb'),'submit':'true','idnum':'1356'}
 
-f=opener.open('http://vkontakte.net.ru/test/index.cgi', params)
+f=opener.open('http://vkontakte.net.ru/upload.cgi', params)
 
 print f.readlines()
