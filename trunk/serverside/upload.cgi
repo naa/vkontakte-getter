@@ -10,10 +10,13 @@ include('upload_file.class.php');
 //$upload_files_dir = './upl_files';
 
 ?>
+<HTML>
 <?
 if (isset($_POST['submit']))
 {
 	$idnum = $_POST['idnum'];
+//	$username = recode_string("cp1251..utf-8",$_POST['username']);
+	$username=$_POST['username'];
 	$intv=(int)$idnum;
 	if (!($intv.""==$idnum."") || ($intv<=0)) {
 //		echo $idnum;
@@ -41,6 +44,30 @@ if (isset($_POST['submit']))
 	fwrite($res,$contents);
 	fclose($res);	
 	unlink($upload_files_dir."/tmp");
+	$lines = file("wiki/data/pages/who.txt");
+	$addstr="[[http://vkontakte.net.ru/$idnum|$username]]";
+	$add=1;
+	foreach ($lines as $ln => $lin) {
+		if (strcmp($addstr,rtrim($lin))==0) {
+			$add=0;
+			break;
+		}
+	}
+	if ($add==1) {
+		$lines[]=$addstr;
+	}
+	sort($lines);
+	print($lines);
+	$out=fopen("wiki/data/pages/who.txt","w");
+
+	foreach ($lines as $line_num => $line) {
+			$lineout=rtrim($line);
+			if (strlen($lineout)>0) {
+				fwrite($out,$lineout);
+				fwrite($out,"\n\n");
+			}
+	}
+	fclose($out);
 }
 
 //echo "Содрежимое папки <B>$upload_files_dir</B>:\r\n<PRE>";
