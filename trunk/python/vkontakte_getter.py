@@ -18,7 +18,7 @@ import tkGui
 import webbrowser
 import tkMessageBox
 import MultipartPostHandler
-
+import codecs
 
 class DataHolder:
 	"""	 Хранит все загруженные страницы в каталогах data/<id>
@@ -314,15 +314,16 @@ class FineImageProducer:
 			self.others_circle.set_pos()
 
 		def output_js(self,output):
-				output.write('my_name=\''+self.myself.name+'\';\n')
-				output.write('persons={')
+				output.write(u'my_name=\'')
+				output.write(self.myself.name)
+				output.write(u'\';\npersons={')
 				for k,v in self.my_friends.iteritems():
-						output.write('\''+k+'\':')
+						output.write(u'\''+k+u'\':')
 						output.write(v.jscript_repr())
-						output.write(',\n')
-				output.write('\'dummy\':\'dummy\'\n')		
-				output.write('};')		
-				output.write('</script>')
+						output.write(u',\n')
+				output.write(u'\'dummy\':\'dummy\'\n')		
+				output.write(u'};')		
+				output.write(u'</script>')
 		
 		def output_caption(self,output,circle,text):	
 			x,y=circle.center_x-50,circle.center_y-circle.rad-30
@@ -332,17 +333,17 @@ class FineImageProducer:
 		def output_html(self,output):
 				output.write('<div id="group0" style="width:1200px;height:1200px;"><canvas id="canvas" width=1200px height=1200px></canvas> \n')
 
-				self.output_caption(output,self.dept_circle,u'Кафедра'.encode('cp1251'))
-				self.output_caption(output,self.fac_circle,u'Факультет'.encode('cp1251'))
-				self.output_caption(output,self.univ_circle,u'Университет'.encode('cp1251'))
-				self.output_caption(output,self.others_circle,u'Друзья'.encode('cp1251'))
+				self.output_caption(output,self.dept_circle,u'Кафедра')
+				self.output_caption(output,self.fac_circle,u'Факультет')
+				self.output_caption(output,self.univ_circle,u'Университет')
+				self.output_caption(output,self.others_circle,u'Друзья')
 #				for k,v in self.my_friends.iteritems():
 #						output.write(v.html_repr())
 #						output.write('\n')
 				output.write('</div>\n')
 
 		def draw_circle(self):
-			output = open('tmp','w')
+			output = codecs.open('tmp','w','utf-8')
 			draw_map={}
 			self.fill_circles()
 			self.calc_positions()
@@ -376,7 +377,7 @@ class FineImageProducer:
 			cookies = cookielib.CookieJar()
 
 			opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies), MultipartPostHandler.MultipartPostHandler)
-			params = {'upload_file':open(filename,'rb'),'submit':'true','idnum':self.myself.idnum}
+			params = {'upload_file':open(filename,'rb'),'submit':'true','idnum':self.myself.idnum,'username':self.myself.name}
 
 			opener.open('http://vkontakte.net.ru/upload.cgi', params)
 
@@ -389,31 +390,30 @@ class FineImageProducer:
 		def output_most_friendly(self,output):
 			key_list=self.my_friends.keys()
 			key_list.sort(key=lambda x: self.my_friends[x].total_friends_num,reverse=True)
-			output.write(u'<h3>Самые дружелюбные</h3>\n<table>\n'.encode('cp1251'))
+			output.write(u'<h3>Самые дружелюбные</h3>\n<table>\n')
 			self.output_top_n(output,key_list,self.my_friends,lambda x:self.my_friends[x].total_friends_num,5)
 
 		def output_most_common(self,output):		
 			key_list=self.my_friends.keys()
 			key_list.sort(key=lambda x: len(self.my_friends[x].friends.keys()),reverse=True)
-			output.write(u'<h3>Больше всего общих друзей:</h3>\n<table>\n'.encode('cp1251'))
+			output.write(u'<h3>Больше всего общих друзей:</h3>\n<table>\n')
 
 			self.output_top_n(output,key_list,self.my_friends,lambda x:len(self.my_friends[x].friends.keys()),5)
 
 		def output_most_unknown(self,output):		
 			key_list=self.friends_of_friends.keys()
 			key_list.sort(key=lambda x: len(self.friends_of_friends[x].friends.keys()),reverse=True)
-			output.write(u'<h3>Больше всего общих друзей (лично не знакомы):</h3>\n<table>\n'.encode('cp1251'))
+			output.write(u'<h3>Больше всего общих друзей (лично не знакомы):</h3>\n<table>\n')
 			self.output_top_n(output,key_list,self.friends_of_friends,lambda x:len(self.friends_of_friends[x].friends.keys()),5)
 
 	
 	
 		def output_statistics(self,output):
-			output.write(u'<h2>Статистика</h2>\n'.encode('cp1251'))
-			output.write((u'Всего друзей: %d<br>\n' % len(self.my_friends.keys())).encode('cp1251')
-)
-			output.write((u'Всего друзей друзей: %d<br>\n' % (len(self.my_friends.keys()) + len(self.friends_of_friends.keys()))).encode('cp1251'))
+			output.write(u'<h2>Статистика</h2>\n')
+			output.write((u'Всего друзей: %d<br>\n' % len(self.my_friends.keys())))
+			output.write((u'Всего друзей друзей: %d<br>\n' % (len(self.my_friends.keys()) + len(self.friends_of_friends.keys()))))
 
-			output.write((u'Среднее число друзей у друзей: %f<br>\n' % (float(reduce(lambda x,y: x+self.my_friends[y].total_friends_num,self.my_friends.keys(),0)) / (len(self.my_friends.keys())))).encode('cp1251'))
+			output.write((u'Среднее число друзей у друзей: %f<br>\n' % (float(reduce(lambda x,y: x+self.my_friends[y].total_friends_num,self.my_friends.keys(),0)) / (len(self.my_friends.keys())))))
 
 
 			self.output_most_friendly(output)
@@ -447,7 +447,7 @@ class FineImageProducer:
 			key_list=groups.keys()
 			output.write('<table id=\'group3\' style="{display:none;};" width=750px>\n <tr><td>')
 			output.write('<div height=50px> &nbsp; </div><br>')
-			output.write(u'<h2>Популярные группы:</h2>\n'.encode('cp1251'))
+			output.write(u'<h2>Популярные группы:</h2>\n')
 			key_list.sort(key=lambda x: groups[x].get_size(),reverse=True)
 		  	for k in key_list[:5]:
 				output.write('\n<h3><a href="http://vkontakte.ru/club%(gid)s">%(name)s (%(num)d)</a></h3>\n' % {'gid':groups[k].idnum,'name':groups[k].name,'num':groups[k].get_size()})
@@ -459,7 +459,7 @@ class FineImageProducer:
 			key_list=interests.keys()
 			output.write('<table id=\'group4\' style="{display:none;};" width=750px>\n <tr><td>')
 			output.write('<div height=50px> &nbsp; </div><br>')
-			output.write(u'<h2>Популярные интересы:</h2>\n'.encode('cp1251'))
+			output.write(u'<h2>Популярные интересы:</h2>\n')
 			key_list.sort(key=lambda x: interests[x].get_size(),reverse=True)
 		  	for k in key_list[:10]:
 				output.write('\n<h3>%(name)s (%(num)d)</h3>\n' % {'name':interests[k].name,'num':interests[k].get_size()})
@@ -475,32 +475,38 @@ def parse_personal_page(fpage):
 		for l in fpage.readlines():
 #				print l
 				lines+=l
-
 		m = re.compile('<title>[^<\|]*\| (?P<name>[^<]*)</title>').search(lines)
-		name=m.group('name').rstrip().lstrip()
+		name=m.group('name').rstrip().lstrip().decode('cp1251')
+
 		m = re.compile('<a href=("|\')friend.php\?id=(?P<id>\d*)("|\')>[^<]*</a>').search(lines)
-		idnum=m.group('id').rstrip().lstrip()
+		idnum=m.group('id').rstrip().lstrip().decode('cp1251')
+
 #		print idnum,name
 		pdata=PersonData(idnum,name)
 
 		m=re.compile('<a href=\'search.php\?uid=\d*\'>(?P<univer>[^<]*)</a>').search(lines)
 		if m and m.group('univer'):
-			pdata.univer=m.group('univer').rstrip().lstrip()
+			pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
+
 		m=re.compile('<a href=\'search.php\?uid=\d*&year=\d*\'> \'(?P<year>\d*)</a>').search(lines)
 		if m and m.group('year'):
-			pdata.year=m.group('year').rstrip().lstrip()
+			pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
+
 
 		m=re.compile('<a href=\'search.php\?fid=\d*\'>(?P<faculty>[^<]*)</a>').search(lines)
 		if m and m.group('faculty'):
-			pdata.faculty=m.group('faculty').rstrip().lstrip()
+			pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
+
 		m=re.compile('<a href=\'search.php\?cid=\d*\'>(?P<dept>[^<]*)</a>').search(lines)
 		if m and m.group('dept'):
-			pdata.dept=m.group('dept').rstrip().lstrip()
+			pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
+
 
 		regex=re.compile('<a href=\'club(?P<idnum>\d*)\'>(?P<name>[^<]*)</a>')
 		m=regex.search(lines)
 		while m:
-			group=GroupData(m.group('idnum'),m.group('name'))
+			group=GroupData(m.group('idnum'),m.group('name').decode('cp1251')
+)
 			group.members[pdata.idnum]=pdata
 			pdata.groups[group.idnum]=group
 			m=regex.search(lines,m.end())
@@ -508,7 +514,8 @@ def parse_personal_page(fpage):
 		regex=re.compile('<a href=\'search.php\?f=1&f\d{1}=[^\']*\'>(?P<name>[^<]*)</a>')
 		m=regex.search(lines)
 		while m:
-			name=m.group('name').decode('cp1251').lower().lstrip().rstrip().encode('cp1251')
+			name=m.group('name').decode('cp1251').lower().lstrip().rstrip()
+
 			if len(name)>0:
 				inter=Interest(name)
 				inter.members[pdata.idnum]=pdata
@@ -536,16 +543,22 @@ def parse_friends_page(fpage):
     persons={}
     while m:
 		idnum=m.group('id').rstrip().lstrip()
-		name=m.group('name').rstrip().lstrip()
+		name=m.group('name').rstrip().lstrip().decode('cp1251')
+
 		pdata=PersonData(idnum,name)
 		if m.group('uni') or m.group('univer'):
 			if m.group('uni'):
-				pdata.univer=m.group('uni').rstrip().lstrip()
-				pdata.year=m.group('year').rstrip().lstrip()
+				pdata.univer=m.group('uni').rstrip().lstrip().decode('cp1251')
+
+				pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
+
 			else:	
-				pdata.univer=m.group('univer').rstrip().lstrip()	
-			pdata.faculty=m.group('faculty').rstrip().lstrip()
-			pdata.dept=m.group('dept').rstrip().lstrip()
+				pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
+	
+			pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
+
+			pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
+
 #		try:
 #		except IndexError:
 #			print idnum,name	
@@ -562,7 +575,7 @@ class MainThread(threading.Thread):
 		def run(self):
 				
 				self.fip.draw_circle() 
-				webbrowser.open_new('result.html')
+				webbrowser.open_new_tab('result.html')
 
 		def exit(self):
 				self.fip.exit=True
