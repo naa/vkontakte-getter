@@ -562,7 +562,7 @@ class MainThread(threading.Thread):
 		def run(self):
 				
 				self.fip.draw_circle() 
-				webbrowser.open_new_tab('result.html')
+				webbrowser.open_new('result.html')
 
 		def exit(self):
 				self.fip.exit=True
