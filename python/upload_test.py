@@ -16,7 +16,7 @@ cookies = cookielib.CookieJar()
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies),
                                 MultipartPostHandler.MultipartPostHandler)
 #opener.open('http://vkontakte.net.ru/test/upload.cgi')
-params = {'upload_file':open(filename,'rb'),'submit':'true','idnum':'1356'}
+params = {'upload_file':open(filename,'rb'),'submit':'true','idnum':'1356', 'username':'Вася Пупкин'}
 
 f=opener.open('http://vkontakte.net.ru/upload.cgi', params)
 
