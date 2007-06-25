@@ -13,14 +13,14 @@ class MyDialog:
 		frame=self.frame
 		self.frame.grid()
 		
-		Label(frame, text=u'Введите свой email и пароль,\n которые вы используете на сайте\n vkontakte.ru, чтобы построить карту друзей').grid(row=0,columnspan=2)
-		Label(frame, text=u"Email:").grid(row=1,sticky=W)
-		Label(frame, text=u"Пароль:").grid(row=2,sticky=W)
-		Label(frame, text=u'Перезагрузить все страницы').grid(row=3,sticky=W)
-		Label(frame, text=u'Выложить результаты на vkontakte.net.ru').grid(row=4,sticky=W)
+		Label(frame, text=u'Введите свой email и пароль,\n которые вы используете на сайте\n vkontakte.ru, чтобы построить карту друзей',font=('Tahoma',10)).grid(row=0,columnspan=2)
+		Label(frame, text=u"Email:",font=('Tahoma',10)).grid(row=1,sticky=W)
+		Label(frame, text=u"Пароль:",font=('Tahoma',10)).grid(row=2,sticky=W)
+		Label(frame, text=u'Перезагрузить все страницы',font=('Tahoma',10)).grid(row=3,sticky=W)
+		Label(frame, text=u'Выложить результаты на vkontakte.net.ru',font=('Tahoma',10)).grid(row=4,sticky=W)
 
 		self.message = StringVar()
-		self.info=Label(master, textvariable=self.message)
+		self.info=Label(master, textvariable=self.message, font=('Tahoma',10))
 		self.info.grid(row=5,columnspan=2)
 		self.message.set("   ")
 
