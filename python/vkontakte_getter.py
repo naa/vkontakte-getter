@@ -228,9 +228,12 @@ class Circle:
 		def set_pos(self):
 				i=0
 				num=len(self.members)
-				if num==0:
+				if num==0 or self.rad==0:
 						return
-				dy=self.rad*4/num
+				try:
+						dy=self.rad*4/num
+				except:
+						return
 				self.members.sort(key=lambda x: x.name)
 				for pers in self.members:
 						if i<=num/2:
