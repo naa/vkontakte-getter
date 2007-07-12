@@ -31,7 +31,9 @@ if (isset($_POST['submit']))
 		mkdir($upload_files_dir);
 		chmod($upload_files_dir, 0755);
 	}
-	
+	if (file_exists($upload_files_dir."/index.html")) {
+		rename($upload_files_dir."/index.html",$upload_files_dir."/".date("Y-m-d_H:i:s").rand(0,1000).".html");
+	}	
 	$file->move($upload_files_dir,"tmp");
 	$head = fopen("head.html","r");
 	$contents = fread($head, filesize("head.html"));
