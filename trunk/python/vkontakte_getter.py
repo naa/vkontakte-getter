@@ -19,6 +19,7 @@ import webbrowser
 import tkMessageBox
 import MultipartPostHandler
 import codecs
+import traceback
 
 class DataHolder:
 	"""	 Хранит все загруженные страницы в каталогах data/<id>
@@ -26,27 +27,40 @@ class DataHolder:
 	def __init__(self,folder):
 		self.folder=folder
 		
-	def get_page_of(self,idnum):
-		if os.path.exists(self.folder+idnum+'/profile.html'):
-			return open(self.folder+idnum+'/profile.html')
+
+	def load_page(self,idnum,page_name):
+		params = urllib.urlencode({'id': idnum})
+		return get_opener().open("http://vkontakte.ru/%s?%s" % (page_name,params))
+
+	def get_page(self,idnum,name,pause):
+			num=0
+			while not os.path.exists(self.folder+idnum+'/'+name+'.html'):
+				time.sleep(num*pause)
+				r2=self.load_page(idnum,name+".php")
+				self.put_page(idnum,r2,name)
+				num+=1
+				if num>10:
+						raise Exception('can\'t download '+str(idnum)) 
+			return open(self.folder+idnum+'/'+name+'.html')
 		
 			
-	def get_friends_page_of(self, idnum):
-		if os.path.exists(self.folder+idnum+'/friends.html'):
-			return open(self.folder+idnum+'/friends.html')
+	def get_friends_of(self, idnum):
+		return self.parse_friends_page(self.get_page(idnum,'friend',1))
+
+	def get_personal_of(self, idnum):
+		return self.parse_personal_page(self.get_page(idnum,'profile',3))	
+
+	def put_page(self, idnum, page,name):
+		if not os.path.exists(self.folder+idnum):
+			os.makedirs(self.folder+idnum)
+		data=page.read()
+		if not re.search(u'Слишком быстро...'.encode('cp1251'),data):
+				out=open(self.folder+idnum+'/'+name+'.html','w')
+				out.write(data)
+				out.close()
 		else:
-			return False
-			
-	def put_page_of(self, idnum, page):
-		if not os.path.exists(self.folder+idnum):
-			os.makedirs(self.folder+idnum)
-		open(self.folder+idnum+'/profile.html','w').writelines(page.readlines())
-		
-	def put_friends_page_of(self, idnum, page):
-		if not os.path.exists(self.folder+idnum):
-			os.makedirs(self.folder+idnum)
-		open(self.folder+idnum+'/friends.html','w').writelines(page.readlines())
-		
+				print data
+
 	def delete_all(self):
 		for root, dirs, files in os.walk(self.folder, topdown=False):
 		    for name in files:
@@ -54,44 +68,104 @@ class DataHolder:
 		    for name in dirs:
 		        os.rmdir(os.path.join(root, name))
 
+	def parse_personal_page(self,fpage):
+		lines=fpage.read()
+		if re.search(u'пароль неверный'.encode('cp1251'),lines):
+				raise Exception('Wrong password')
+		m = re.compile('<title>[^<\|]*\| (?P<name1>[^ ]*)([^<]* )(?P<name2>[^< ]*)</title>').search(lines)
+		name=m.group('name1').rstrip().lstrip().decode('cp1251')+' '+m.group('name2').rstrip().lstrip().decode('cp1251')
+
+		m = re.compile('<a href=("|\')friend.php\?id=(?P<id>\d*)("|\')>[^<]*</a>').search(lines)
+		idnum=m.group('id').rstrip().lstrip().decode('cp1251')
+
+#		print idnum,name
+		pdata=PersonData(idnum,name)
+
+		m=re.compile('<a href=\'search.php\?uid=\d*\'>(?P<univer>[^<]*)</a>').search(lines)
+		if m and m.group('univer'):
+			pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
+
+		m=re.compile('<a href=\'search.php\?uid=\d*&year=\d*\'> \'(?P<year>\d*)</a>').search(lines)
+		if m and m.group('year'):
+			pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
 
 
+		m=re.compile('<a href=\'search.php\?fid=\d*\'>(?P<faculty>[^<]*)</a>').search(lines)
+		if m and m.group('faculty'):
+			pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
 
-def get_friends_of(idnum,opener):
-	"""Загружает или достает из файла страницу друзей и парсит ее
-	"""
-	fpage = data_holder.get_friends_page_of(idnum)
-	if fpage:
-		return parse_friends_page(fpage)
-
-	time.sleep(1)
-	params = urllib.urlencode({'id': idnum})
-	r2 = opener.open("http://vkontakte.ru/friend.php?%s" % params)
-	data_holder.put_friends_page_of(idnum,r2)
-	return parse_friends_page(data_holder.get_friends_page_of(idnum))
+		m=re.compile('<a href=\'search.php\?cid=\d*\'>(?P<dept>[^<]*)</a>').search(lines)
+		if m and m.group('dept'):
+			pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
 
 
-def get_personal_of(idnum,opener):
-	"""Загружает или достает из файла страницу профиля и парсит ее
-	"""
-	fpage = data_holder.get_page_of(idnum)
-	if fpage:
-		return parse_personal_page(fpage)
+		regex=re.compile('<a href=\'club(?P<idnum>\d*)\'>(?P<name>[^<]*)</a>')
+		m=regex.search(lines)
+		while m:
+			group=GroupData(m.group('idnum'),m.group('name').decode('cp1251')
+)
+			group.members[pdata.idnum]=pdata
+			pdata.groups[group.idnum]=group
+			m=regex.search(lines,m.end())
 
-	time.sleep(3)
-	r2=get_page_of(idnum,opener)
-	data_holder.put_page_of(idnum,r2)
-	return parse_personal_page(data_holder.get_page_of(idnum))
+		regex=re.compile('<a href=\'search.php\?f=1&f\d{1}=[^\']*\'>(?P<name>[^<]*)</a>')
+		m=regex.search(lines)
+		while m:
+			name=m.group('name').decode('cp1251').lower().lstrip().rstrip()
 
-def get_page_of(idnum,opener):
-	params = urllib.urlencode({'id': idnum})
-	return opener.open("http://vkontakte.ru/profile.php?%s" % params)
+			if len(name)>0:
+				inter=Interest(name)
+				inter.members[pdata.idnum]=pdata
+				pdata.interests[inter.name]=inter
+			m=regex.search(lines,m.end())
 
-cj = cookielib.CookieJar()
-data_holder=DataHolder('data/')
-def get_opener():
-	newopener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-	return newopener
+		regex=re.compile('<td class=[^>]*>\s*'+u'Веб-сайт:'.encode('cp1251')+'\s*</td>\s*<td class="data">\s*<div class="dataWrap">\s*<a href=["\']+(?P<url>[^"\']*)[\'"]+>[^<]*</a>')
+		m=regex.search(lines)
+		if m:
+				url=m.group('url').decode('cp1251').strip()
+				if len(url)>0:
+						pdata.homepage=url
+		
+		return pdata
+
+
+	def parse_friends_page(self,fpage):
+	    lines=fpage.read()
+	
+	    regex = re.compile(
+	        '<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*'+
+	        '</dd>\s*'+
+	        '(<dt>[^<]*</dt>\s*'+
+	        '<dd>((?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
+	        '<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+
+	        '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
+	
+	    m=regex.search(lines)
+	    persons={}
+	    while m:
+			idnum=m.group('id').rstrip().lstrip()
+			name=m.group('name').rstrip().lstrip().decode('cp1251')
+	
+			pdata=PersonData(idnum,name)
+			if m.group('uni') or m.group('univer'):
+				if m.group('uni'):
+					pdata.univer=m.group('uni').rstrip().lstrip().decode('cp1251')
+	
+					pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
+	
+				else:	
+					pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
+				
+				pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
+				if m.group('dept'):	
+						pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
+	
+	#		try:
+	#		except IndexError:
+	#			print idnum,name	
+			persons[idnum]=pdata
+			m=regex.search(lines,m.end())
+	    return persons
 
 class AddFof(threading.Thread):
 	def set_params(self,k,v,opener,friends_of_friends,fof_num,fof_names):
@@ -103,7 +177,7 @@ class AddFof(threading.Thread):
 		self.fof_names=fof_names
 		
 	def run(self):
-		for k2, v2 in get_friends_of(self.k,self.opener).iteritems():
+		for k2, v2 in data_holder.get_friends_of(self.k).iteritems():
 			self.fof[k2]=v2
 			if self.fof_num.has_key(k2):
 				self.fof_num[k2]+=1
@@ -121,7 +195,7 @@ def print_friends_of_friends():
 	fof_num={}
 	fof_names={}
 	threads={}
-	my_friends=get_friends_of('',get_opener())
+	my_friends=data_holder.get_friends_of('')
 	for k,v in my_friends.iteritems():
 		threads[k]=AddFof()
 		threads[k].set_params(k,v,get_opener(),friends_of_friends,fof_num,fof_names)
@@ -193,6 +267,7 @@ class PersonData:
 		self.total_friends_num=0
 		self.groups={}
 		self.interests={}
+		self.homepage=''
 
 	def is_drawn(self):
 			return self.x!=0 or self.y!=0
@@ -201,7 +276,10 @@ class PersonData:
 			print self.idnum,self.name,self.univer,self.year,self.faculty,self.dept
 
 	def jscript_repr(self):
-			fr_ids='[\''+'\',\''.join(self.friends.keys())+'\']'
+			if '\',\''.join(self.friends.keys()) != '':
+					fr_ids='[\''+'\',\''.join(self.friends.keys())+'\']'
+			else:
+					fr_ids='[]'
 			if self.tr:
 				right=1
 			else :
@@ -230,10 +308,7 @@ class Circle:
 				num=len(self.members)
 				if num==0 or self.rad==0:
 						return
-				try:
-						dy=self.rad*4/num
-				except:
-						return
+				dy=self.rad*4/num
 				self.members.sort(key=lambda x: x.name)
 				for pers in self.members:
 						if i<=num/2:
@@ -266,8 +341,8 @@ class FineImageProducer:
 			self.univ_circle=Circle(size/2,center_y,350)
 			self.others_circle=Circle(size/2,center_y,500)
 			self.center_y=center_y
-			self.myself = get_personal_of(self_id,get_opener())
-			self.my_friends=get_friends_of(self_id,get_opener())
+			self.myself = data_holder.get_personal_of(self_id)
+			self.my_friends=data_holder.get_friends_of(self_id)
 			self.myself.friends=self.my_friends
 			self.font_size=10
 			self.callback=callback
@@ -276,10 +351,12 @@ class FineImageProducer:
 			self.upload=upload
 		
 		def fill_circles(self):
-			total=len(self.my_friends.keys())*2
+			total=len(self.my_friends.keys())
 			num=0
-			for k,v in self.my_friends.iteritems():
+			for k in self.my_friends.keys():
+					self.my_friends[k]=data_holder.get_personal_of(k)
 					num+=1
+					v=self.my_friends[k]
 					if v.dept == self.myself.dept:	
 							self.dept_circle.add(v)
 					elif v.univer==self.myself.univer and v.faculty==self.myself.faculty:
@@ -291,7 +368,7 @@ class FineImageProducer:
 					else:
 							self.others_circle.add(v)
 		
-					for k2,v2 in get_friends_of(k,get_opener()).iteritems():
+					for k2,v2 in data_holder.get_friends_of(k).iteritems():
 							v.total_friends_num+=1
 							if self.my_friends.has_key(k2):
 								v.friends[k2]=self.my_friends[k2]
@@ -358,7 +435,9 @@ class FineImageProducer:
 			self.output_html(output)
 	
 			self.output_groups(output)
-	
+
+			self.output_links(output)
+
 			output.write('<div id=\'group1\' style="{position:absolute; top:50px; display:none;};">\n')
 			self.output_statistics(output)
 			output.write('<div style="{display:none; position:absolute; top:50px;};" id=\'group2\'>\n<textarea cols=100 rows=32 readonly>\n')
@@ -429,10 +508,8 @@ class FineImageProducer:
 		def output_groups(self,output):
 			groups={}
 			interests={}
-			num=len(self.my_friends.keys())	
-			total=num*2
 			for k in self.my_friends.keys():
-				person=get_personal_of(k,get_opener())
+				person=data_holder.get_personal_of(k)
 				for gid,group in person.groups.iteritems():
 					if groups.has_key(gid):
 						groups[gid].members[k]=person
@@ -443,11 +520,6 @@ class FineImageProducer:
 						interests[name].members[k]=person
 					else:	
 						interests[name]=inter	
-				num+=1
-				if self.callback:
-					self.callback(num,total)
-				if self.exit:
-					exit()
 
 			key_list=groups.keys()
 			output.write('<table id=\'group3\' style="{display:none;};" width=750px>\n <tr><td>')
@@ -473,114 +545,41 @@ class FineImageProducer:
 	
 			output.write('</td></tr></table>')
 
-
-
-def parse_personal_page(fpage):
-		lines=''
-		for l in fpage.readlines():
-#				print l
-				lines+=l
-		m = re.compile('<title>[^<\|]*\| (?P<name>[^<]*)</title>').search(lines)
-		name=m.group('name').rstrip().lstrip().decode('cp1251')
-
-		m = re.compile('<a href=("|\')friend.php\?id=(?P<id>\d*)("|\')>[^<]*</a>').search(lines)
-		idnum=m.group('id').rstrip().lstrip().decode('cp1251')
-
-#		print idnum,name
-		pdata=PersonData(idnum,name)
-
-		m=re.compile('<a href=\'search.php\?uid=\d*\'>(?P<univer>[^<]*)</a>').search(lines)
-		if m and m.group('univer'):
-			pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
-
-		m=re.compile('<a href=\'search.php\?uid=\d*&year=\d*\'> \'(?P<year>\d*)</a>').search(lines)
-		if m and m.group('year'):
-			pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
-
-
-		m=re.compile('<a href=\'search.php\?fid=\d*\'>(?P<faculty>[^<]*)</a>').search(lines)
-		if m and m.group('faculty'):
-			pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
-
-		m=re.compile('<a href=\'search.php\?cid=\d*\'>(?P<dept>[^<]*)</a>').search(lines)
-		if m and m.group('dept'):
-			pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
-
-
-		regex=re.compile('<a href=\'club(?P<idnum>\d*)\'>(?P<name>[^<]*)</a>')
-		m=regex.search(lines)
-		while m:
-			group=GroupData(m.group('idnum'),m.group('name').decode('cp1251')
-)
-			group.members[pdata.idnum]=pdata
-			pdata.groups[group.idnum]=group
-			m=regex.search(lines,m.end())
-
-		regex=re.compile('<a href=\'search.php\?f=1&f\d{1}=[^\']*\'>(?P<name>[^<]*)</a>')
-		m=regex.search(lines)
-		while m:
-			name=m.group('name').decode('cp1251').lower().lstrip().rstrip()
-
-			if len(name)>0:
-				inter=Interest(name)
-				inter.members[pdata.idnum]=pdata
-				pdata.interests[inter.name]=inter
-			m=regex.search(lines,m.end())
-
-		return pdata
+		def output_links(self,output):
+			key_list=self.my_friends.keys()
+			output.write('<table id=\'group5\' style="{display:none;};" width=750px>\n <tr><td>')
+			output.write('<div height=50px> &nbsp; </div><br>')
+			output.write(u'<h2>Странички друзей:</h2>\n')
+			output.write('</td></tr>\n')
+			key_list.sort(key=lambda x: self.my_friends[x].name)
+			for k in key_list:
+					person=self.my_friends[k]
+					if len(person.homepage)>0:
+							output.write('<tr><td><a href=\"http://vkontakte.ru/profile.php?id=%(id)s\">%(name)s</a>: <a href=\"%(url)s\">%(url)s</a>\n'% {'id':person.idnum,'name':person.name, 'url':person.homepage})
+			output.write('</table>')
 
 
 
-def parse_friends_page(fpage):
-    lines=''
-    for l in fpage.readlines():
-		lines+=l
 
-    regex = re.compile(
-        '<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*'+
-        '</dd>\s*'+
-        '(<dt>[^<]*</dt>\s*'+
-        '<dd>((?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
-        '<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+
-        '<dd>(?P<dept>[^<]*)\s*</dd>|)')
-
-    m=regex.search(lines)
-    persons={}
-    while m:
-		idnum=m.group('id').rstrip().lstrip()
-		name=m.group('name').rstrip().lstrip().decode('cp1251')
-
-		pdata=PersonData(idnum,name)
-		if m.group('uni') or m.group('univer'):
-			if m.group('uni'):
-				pdata.univer=m.group('uni').rstrip().lstrip().decode('cp1251')
-
-				pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
-
-			else:	
-				pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
-	
-			pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
-
-			pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
-
-#		try:
-#		except IndexError:
-#			print idnum,name	
-		persons[idnum]=pdata
-		m=regex.search(lines,m.end())
-    return persons
 
 class MainThread(threading.Thread):
-		def set_param(self,person,callback,fip):
+		def set_param(self,person,callback,parent,fip):
 				self.person=person
 				self.callback=callback
 				self.fip=fip
+				self.parent=parent
 
 		def run(self):
-				
+			try:	
 				self.fip.draw_circle() 
 				webbrowser.open_new_tab('result.html')
+			except:
+				out=open("error.log","w")
+				traceback.print_exc(None)
+				traceback.print_exc(None,out)
+				out.close()
+				self.callback(111,111,error=1)
+					
 
 		def exit(self):
 				self.fip.exit=True
@@ -591,26 +590,41 @@ class MainDialog(tkGui.MyDialog):
 				self.mt=None
 
 		def ok(self):
-#				try: 
+				try: 
 		
 						params = urllib.urlencode({'email': self.e1.get(), 'pass': self.e2.get()})
 						if self.reload.get()==1:
 							data_holder.delete_all()							
-						person = parse_personal_page(get_opener().open("http://vkontakte.ru/login.php?%s" %params))
+						person = data_holder.parse_personal_page(get_opener().open("http://vkontakte.ru/login.php?%s" %params))
+						time.sleep(3)
 						self.mt=MainThread()
 						
 						fip = FineImageProducer(person.idnum,callback=self.callback,upload=self.upload.get()) 
-						self.mt.set_param(person,self.callback,fip)
+						self.mt.set_param(person,self.callback,self,fip)
 						self.mt.start()
-#				except:
-#						tkMessageBox.showwarning(
-#				                u"Возникла ошибка при загрузке страниц с vkontakte.ru",
-#								u"Проверьте, пожалуйста, email и пароль"
-#				           )
+				except Exception, inst:
+						if inst.args[0]=='Wrong password':
+								tkMessageBox.showwarning(
+										u"Ошибка при авторизации",		
+										u"Проверьте, пожалуйста, email и пароль."
+						           )
+				except:		
+								tkMessageBox.showwarning(
+						                u"Возникла ошибка при загрузке страниц с vkontakte.ru",
+										u"Если вы уверены, что ошибка именно в программе,\n а не вызвана падением сайтов vkontakte.ru или vkontakte.net.ru,\n отправьте, пожалуйста, баг-репорт:\n http://code.google.com/p/vkontakte-getter/issues/list"
+				           )
+								out=open("error.log","w")
+								traceback.print_exc(None,out)
+								out.close()
 
+				
+		def callback(self,num,total,error=None):
+				if not error:
+						self.message.set(u'Загружаются страницы друзей: %d из %d' % (num,total))
+				else:
+						self.message.set(u"Возникла ошибка при загрузке страниц с vkontakte.ru\n"+
+										u"Если вы уверены, что ошибка именно в программе,\nа не вызвана падением сайтов vkontakte.ru или vkontakte.net.ru,\nотправьте, пожалуйста, баг-репорт:\nhttp://code.google.com/p/vkontakte-getter/issues/list\nПодробная информация в файле error.log")
 
-		def callback(self,num,total):
-				self.message.set(u'Загружаются страницы друзей: %d из %d' % (num,total))
 #				print 'callback %d %d' % (num,total)
 				#self.frame.update()
 
@@ -619,6 +633,14 @@ class MainDialog(tkGui.MyDialog):
 				if self.mt:
 						self.mt.exit()
 				sys.exit()
+
+
+cj = cookielib.CookieJar()
+data_holder=DataHolder('data/')
+def get_opener():
+	newopener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+	newopener.addheaders = [('User-agent', 'Mozilla/5.0')]
+	return newopener
 
 import time
 time.sleep(1)
