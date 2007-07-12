@@ -14,9 +14,10 @@
 <div style="{position:absolute; top:30px; left:0px;}"><a class='top' href="javascript:void('')" onclick="show_group(0);">Карта друзей</a></div> 
 <div style="{position:absolute; top:30px; left:110px;}"><a class='top' href="javascript:void('')" onclick="show_group(1);">Статистика</a></div>
 <div style="{position:absolute; top:30px; left:210px;}"><a class='top' href="javascript:void('')" onclick="show_group(2);">Код для вставки в блог</a></div>
-<div style="{position:absolute; top:30px; left:410px;}"><a class='top' href="javascript:void('')" onclick="show_group(3);">Группы</a></div>
-<div style="{position:absolute; top:30px; left:475px;}"><a class='top' href="javascript:void('')" onclick="show_group(4);">Интересы</a></div>
-<div style="{position:absolute; top:30px; left:570px;}"><a class='top' target="_top" href="http://vkontakte.net.ru">На главную страницу</a></div>
+<div style="{position:absolute; top:30px; left:380px;}"><a class='top' href="javascript:void('')" onclick="show_group(3);">Группы</a></div>
+<div style="{position:absolute; top:30px; left:455px;}"><a class='top' href="javascript:void('')" onclick="show_group(4);">Интересы</a></div>
+<div style="{position:absolute; top:30px; left:545px;}"><a class='top' href="javascript:void('')" onclick="show_group(5);">Страницы друзей</a></div>
+<div style="{position:absolute; top:30px; left:680px;}"><a class='top' target="_top" href="http://vkontakte.net.ru">На главную страницу</a></div>
 <div style="{position:absolute; top:1350px; left:0px;}">
 <script type="text/javascript"><!--
 google_ad_client = "pub-9997957526313461";
@@ -59,7 +60,7 @@ function init() {
 }
 
 function show_group(num) {
-	for (var i=0; i<5; i++) {
+	for (var i=0; i<6; i++) {
 		document.getElementById('group'+i).style.display='none';
 	}
 	document.getElementById('group'+num).style.display='block';
