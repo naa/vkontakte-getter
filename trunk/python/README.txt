@@ -16,3 +16,9 @@
 
 Для запуска напишите в командной строке:
 python vkontakte_getter.py
+
+===== Дополнительная информация =====
+
+http://vkontakte.net.ru
+
+http://code.google.com/p/vkontakte-getter
