@@ -33,13 +33,13 @@ class DataHolder:
 		return get_opener().open("http://vkontakte.ru/%s?%s" % (page_name,params))
 
 	def get_page(self,idnum,name,pause):
-			num=0
+			num=1
 			while not os.path.exists(self.folder+idnum+'/'+name+'.html'):
 				time.sleep(num*pause)
 				r2=self.load_page(idnum,name+".php")
 				self.put_page(idnum,r2,name)
 				num+=1
-				if num>10:
+				if num>11:
 						raise Exception('can\'t download '+str(idnum)) 
 			return open(self.folder+idnum+'/'+name+'.html')
 		
@@ -58,8 +58,8 @@ class DataHolder:
 				out=open(self.folder+idnum+'/'+name+'.html','w')
 				out.write(data)
 				out.close()
-		else:
-				print data
+#		else:
+#				print data
 
 	def delete_all(self):
 		for root, dirs, files in os.walk(self.folder, topdown=False):
@@ -72,11 +72,19 @@ class DataHolder:
 		lines=fpage.read()
 		if re.search(u'пароль неверный'.encode('cp1251'),lines):
 				raise Exception('Wrong password')
-		m = re.compile('<title>[^<\|]*\| (?P<name1>[^ ]*)([^<]* )(?P<name2>[^< ]*)</title>').search(lines)
-		name=m.group('name1').rstrip().lstrip().decode('cp1251')+' '+m.group('name2').rstrip().lstrip().decode('cp1251')
+		m = re.compile('<title>[^<\|]*\| (?P<name1>[^ ]*)(?:([^<]* )(?P<name2>[^< ]*)|\s*)</title>').search(lines)
+		if m:
+			name=m.group('name1').rstrip().lstrip().decode('cp1251')
+			if	m.group('name2'):
+				name=name+' '+m.group('name2').rstrip().lstrip().decode('cp1251')
+		else:
+			return None			
 
 		m = re.compile('<a href=("|\')friend.php\?id=(?P<id>\d*)("|\')>[^<]*</a>').search(lines)
-		idnum=m.group('id').rstrip().lstrip().decode('cp1251')
+		if m:
+				idnum=m.group('id').rstrip().lstrip().decode('cp1251')
+		else:		
+			return None			
 
 #		print idnum,name
 		pdata=PersonData(idnum,name)
@@ -125,6 +133,14 @@ class DataHolder:
 				url=m.group('url').decode('cp1251').strip()
 				if len(url)>0:
 						pdata.homepage=url
+	
+		regex=re.compile('<td class=[\'"]+label[\'"]+>ICQ:</td>\s*<td class=[\'"]+data[\'"]+>\s*<div class=[\'"]+dataWrap[\'"]+>\s*(?P<icq>[^<]*)</div>')
+		m=regex.search(lines)
+		if m and m.group('icq'):
+				icq=m.group('icq').decode('cp1251').strip()
+				icq=''.join(re.findall('\d+',icq))
+				if len(icq)>0:
+						pdata.icq=icq
 		
 		return pdata
 
@@ -133,19 +149,26 @@ class DataHolder:
 	    lines=fpage.read()
 	
 	    regex = re.compile(
-	        '<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*'+
-	        '</dd>\s*'+
-	        '(<dt>[^<]*</dt>\s*'+
-	        '<dd>((?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
+			'(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+
+	        '\s*</dd>\s*'+
+			'(?:<dt>[^<]*</dt>\s*'+
+			'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
 	        '<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+
 	        '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
-	
+#	    reg4 = re.compile('(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+'\s*</dd>\s*'+'(?:<dt>[^<]*</dt>\s*'+'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+'<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+ '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
+
+
+
 	    m=regex.search(lines)
 	    persons={}
 	    while m:
-			idnum=m.group('id').rstrip().lstrip()
-			name=m.group('name').rstrip().lstrip().decode('cp1251')
-	
+			if m.group('id'):	
+				idnum=m.group('id').rstrip().lstrip()
+				name=m.group('name').rstrip().lstrip().decode('cp1251')
+			else:	
+				idnum=m.group('id1').rstrip().lstrip()
+				name=m.group('name1').rstrip().lstrip().decode('cp1251')
+				
 			pdata=PersonData(idnum,name)
 			if m.group('uni') or m.group('univer'):
 				if m.group('uni'):
@@ -268,6 +291,7 @@ class PersonData:
 		self.groups={}
 		self.interests={}
 		self.homepage=''
+		self.icq=''
 
 	def is_drawn(self):
 			return self.x!=0 or self.y!=0
@@ -354,9 +378,11 @@ class FineImageProducer:
 			total=len(self.my_friends.keys())
 			num=0
 			for k in self.my_friends.keys():
-					self.my_friends[k]=data_holder.get_personal_of(k)
+					v=data_holder.get_personal_of(k)
+					if v:
+						self.my_friends[k]=v
+					v=self.my_friends[k]	
 					num+=1
-					v=self.my_friends[k]
 					if v.dept == self.myself.dept:	
 							self.dept_circle.add(v)
 					elif v.univer==self.myself.univer and v.faculty==self.myself.faculty:
@@ -457,6 +483,8 @@ class FineImageProducer:
 				self.upload_results('tmp')	
 			os.remove('tmp')
 
+			self.output_icq()
+
 		def upload_results(self,filename):
 			cookies = cookielib.CookieJar()
 
@@ -496,8 +524,8 @@ class FineImageProducer:
 			output.write(u'<h2>Статистика</h2>\n')
 			output.write((u'Всего друзей: %d<br>\n' % len(self.my_friends.keys())))
 			output.write((u'Всего друзей друзей: %d<br>\n' % (len(self.my_friends.keys()) + len(self.friends_of_friends.keys()))))
-
-			output.write((u'Среднее число друзей у друзей: %f<br>\n' % (float(reduce(lambda x,y: x+self.my_friends[y].total_friends_num,self.my_friends.keys(),0)) / (len(self.my_friends.keys())))))
+			if len(self.my_friends.keys()) != 0:	
+					output.write((u'Среднее число друзей у друзей: %f<br>\n' % (float(reduce(lambda x,y: x+self.my_friends[y].total_friends_num,self.my_friends.keys(),0)) / (len(self.my_friends.keys())))))
 
 
 			self.output_most_friendly(output)
@@ -510,6 +538,8 @@ class FineImageProducer:
 			interests={}
 			for k in self.my_friends.keys():
 				person=data_holder.get_personal_of(k)
+				if not person:
+						person=self.my_friends[k]
 				for gid,group in person.groups.iteritems():
 					if groups.has_key(gid):
 						groups[gid].members[k]=person
@@ -558,8 +588,34 @@ class FineImageProducer:
 							output.write('<tr><td><a href=\"http://vkontakte.ru/profile.php?id=%(id)s\">%(name)s</a>: <a href=\"%(url)s\">%(url)s</a>\n'% {'id':person.idnum,'name':person.name, 'url':person.homepage})
 			output.write('</table>')
 
+		def output_icq(self):
+			out=codecs.open('icqnumbers.clb','w','cp1251')
+			members=self.dept_circle.members
+			members.sort(key=lambda x:x.name)
+			def print_out(str1,members):
+					for p in members:
+							if len(p.icq)>4:
+								out.write(str1)
+								out.write(u';')
+								out.write(p.icq)
+								out.write(u';')
+								out.write(p.name)
+								out.write(u';;;')
+								out.write('\n')
 
-
+			print_out(self.myself.dept,members)	
+			members=self.fac_circle.members
+			members.sort(key=lambda x:x.name)
+			print_out(self.myself.faculty,members)	
+			members=self.univ_circle.members
+			members.sort(key=lambda x:x.name)
+			print_out(self.myself.univer,members)	
+			members=self.others_circle.members
+			members.sort(key=lambda x:x.name)
+			print_out(u'Остальные',members)
+			out.close()
+				
+		
 
 
 class MainThread(threading.Thread):
