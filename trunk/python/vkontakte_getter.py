@@ -44,7 +44,9 @@ class DataHolder:
 			return open(self.folder+idnum+'/'+name+'.html')
 		
 			
-	def get_friends_of(self, idnum):
+	def get_friends_of(self, idnum, nocache=False):
+		if nocache:
+		 	os.remove(self.folder+idnum+'/'+'friend.html')
 		return self.parse_friends_page(self.get_page(idnum,'friend',1))
 
 	def get_personal_of(self, idnum):
@@ -366,7 +368,7 @@ class FineImageProducer:
 			self.others_circle=Circle(size/2,center_y,500)
 			self.center_y=center_y
 			self.myself = data_holder.get_personal_of(self_id)
-			self.my_friends=data_holder.get_friends_of(self_id)
+			self.my_friends=data_holder.get_friends_of(self_id,nocache=True)
 			self.myself.friends=self.my_friends
 			self.font_size=10
 			self.callback=callback
