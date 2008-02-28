@@ -30,7 +30,13 @@ class DataHolder:
 
 	def load_page(self,idnum,page_name):
 		params = urllib.urlencode({'id': idnum})
-		return get_opener().open("http://vkontakte.ru/%s?%s" % (page_name,params))
+		try:
+			return get_opener().open("http://vkontakte.ru/%s?%s" % (page_name,params))
+		except:
+			out=open("error.log","w")
+			traceback.print_exc(None,out)
+			out.close()
+			return None
 
 	def get_page(self,idnum,name,pause):
 			num=1
@@ -46,7 +52,10 @@ class DataHolder:
 			
 	def get_friends_of(self, idnum, nocache=False):
 		if nocache:
-		 	os.remove(self.folder+idnum+'/'+'friend.html')
+			try:
+				os.remove(self.folder+idnum+'/'+'friend.html')
+			except:
+				pass
 		return self.parse_friends_page(self.get_page(idnum,'friend',1))
 
 	def get_personal_of(self, idnum):
@@ -82,7 +91,7 @@ class DataHolder:
 		else:
 			return None			
 
-		m = re.compile('<a href=("|\')friend.php\?id=(?P<id>\d*)("|\')>[^<]*</a>').search(lines)
+		m = re.compile('<a href=("|\')friend.php\?id=(?P<id>\d*)\&\d+("|\')>[^<]*</a>').search(lines)
 		if m:
 				idnum=m.group('id').rstrip().lstrip().decode('cp1251')
 		else:		
@@ -129,7 +138,7 @@ class DataHolder:
 				pdata.interests[inter.name]=inter
 			m=regex.search(lines,m.end())
 
-		regex=re.compile('<td class=[^>]*>\s*'+u'Веб-сайт:'.encode('cp1251')+'\s*</td>\s*<td class="data">\s*<div class="dataWrap">\s*<a href=["\']+(?P<url>[^"\']*)[\'"]+>[^<]*</a>')
+		regex=re.compile('<td class=[^>]*>\s*'+u'Веб-сайт:'.encode('cp1251')+'\s*</td>\s*<td class="data">\s*<div class="dataWrap">\s*<a href=["\']+(?P<url0>[^"\']*)[\'"]+[^>]*>(?P<url>[^<]*)</a>')
 		m=regex.search(lines)
 		if m:
 				url=m.group('url').decode('cp1251').strip()
@@ -151,12 +160,17 @@ class DataHolder:
 	    lines=fpage.read()
 	
 	    regex = re.compile(
-			'(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+
-	        '\s*</dd>\s*'+
-			'(?:<dt>[^<]*</dt>\s*'+
-			'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
-	        '<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+
-	        '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
+		    '<a id=(?:\'|")friendShownName(?P<id>\d+)(?:\'|")[^>]*>\s*(?P<name>[^<]*)\s*</a>\s*'+
+		    '\s*</dd>\s*'+
+		    '(?:<dt>[^<]*</dt>\s*'+
+		    '<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>|)')
+
+#			'(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+
+#	        '\s*</dd>\s*'+
+#			'(?:<dt>[^<]*</dt>\s*'+
+#			'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
+#	        '<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+
+#	        '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
 #	    reg4 = re.compile('(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+'\s*</dd>\s*'+'(?:<dt>[^<]*</dt>\s*'+'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+'<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+ '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
 
 
@@ -168,7 +182,8 @@ class DataHolder:
 				idnum=m.group('id').rstrip().lstrip()
 				name=m.group('name').rstrip().lstrip().decode('cp1251')
 			else:	
-				idnum=m.group('id1').rstrip().lstrip()
+                                mg = m.group('id1')
+				idnum=mg.rstrip().lstrip()
 				name=m.group('name1').rstrip().lstrip().decode('cp1251')
 				
 			pdata=PersonData(idnum,name)
@@ -180,10 +195,10 @@ class DataHolder:
 	
 				else:	
 					pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
-				
-				pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
-				if m.group('dept'):	
-						pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
+#				if m.group('faculty'):
+#					pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
+#				if m.group('dept'):	
+#						pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
 	
 	#		try:
 	#		except IndexError:
@@ -666,6 +681,10 @@ class MainDialog(tkGui.MyDialog):
 										u"Ошибка при авторизации",		
 										u"Проверьте, пожалуйста, email и пароль."
 						           )
+						else:
+								out=open("error.log","w")
+								traceback.print_exc(inst,out)
+								out.close()							
 				except:		
 								tkMessageBox.showwarning(
 						                u"Возникла ошибка при загрузке страниц с vkontakte.ru",
