@@ -160,10 +160,13 @@ class DataHolder:
 	    lines=fpage.read()
 	
 	    regex = re.compile(
-		    '<a id=(?:\'|")friendShownName(?P<id>\d+)(?:\'|")[^>]*>\s*(?P<name>[^<]*)\s*</a>\s*'+
-		    '\s*</dd>\s*'+
-		    '(?:<dt>[^<]*</dt>\s*'+
-		    '<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>|)')
+		    (u'<div id="friendCont(?P<id1>\d+)".*?'+
+		     u'<dt>Имя:</dt>\s*'+
+		     u'\s*<dd>\s*'+
+		     u'(?:<a id=(?:\'|")friendShownName(?P<id>\d+)(?:\'|")[^>]*>\s*|)(?P<name>[^<]*)\s*(?:</a>\s*'+
+		     u'\s*|)</dd>\s*'+
+		     u'(?:<dt>[^<]*</dt>\s*'+
+		     u'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>|)').encode('cp1251'),re.DOTALL)
 
 #			'(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+
 #	        '\s*</dd>\s*'+
@@ -181,10 +184,10 @@ class DataHolder:
 			if m.group('id'):	
 				idnum=m.group('id').rstrip().lstrip()
 				name=m.group('name').rstrip().lstrip().decode('cp1251')
-			else:	
+			elif m.group('id1'):	
                                 mg = m.group('id1')
 				idnum=mg.rstrip().lstrip()
-				name=m.group('name1').rstrip().lstrip().decode('cp1251')
+				name=m.group('name').rstrip().lstrip().decode('cp1251')
 				
 			pdata=PersonData(idnum,name)
 			if m.group('uni') or m.group('univer'):
