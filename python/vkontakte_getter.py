@@ -20,6 +20,7 @@ import tkMessageBox
 import MultipartPostHandler
 import codecs
 import traceback
+import demjson
 
 class DataHolder:
 	"""	 Хранит все загруженные страницы в каталогах data/<id>
@@ -38,15 +39,16 @@ class DataHolder:
 			out.close()
 			return None
 
-	def get_page(self,idnum,name,pause):
+	def get_page(self,idn,name,pause):
 			num=1
+			idnum=str(idn)
 			while not os.path.exists(self.folder+idnum+'/'+name+'.html'):
 				time.sleep(num*pause)
 				r2=self.load_page(idnum,name+".php")
 				self.put_page(idnum,r2,name)
 				num+=1
 				if num>11:
-						raise Exception('can\'t download '+str(idnum)) 
+						raise Exception('can\'t download '+idnum) 
 			return open(self.folder+idnum+'/'+name+'.html')
 		
 			
@@ -61,7 +63,8 @@ class DataHolder:
 	def get_personal_of(self, idnum):
 		return self.parse_personal_page(self.get_page(idnum,'profile',3))	
 
-	def put_page(self, idnum, page,name):
+	def put_page(self, idn, page,name):
+		idnum=str(idn)
 		if not os.path.exists(self.folder+idnum):
 			os.makedirs(self.folder+idnum)
 		data=page.read()
@@ -158,56 +161,18 @@ class DataHolder:
 
 	def parse_friends_page(self,fpage):
 	    lines=fpage.read()
-	
+	    
 	    regex = re.compile(
-		    (u'<div id="friendCont(?P<id1>\d+)".*?'+
-		     u'<dt>Имя:</dt>\s*'+
-		     u'\s*<dd>\s*'+
-		     u'(?:<a id=(?:\'|")friendShownName(?P<id>\d+)(?:\'|")[^>]*>\s*|)(?P<name>[^<]*)\s*(?:</a>\s*'+
-		     u'\s*|)</dd>\s*'+
-		     u'(?:<dt>[^<]*</dt>\s*'+
-		     u'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>|)').encode('cp1251'),re.DOTALL)
-
-#			'(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+
-#	        '\s*</dd>\s*'+
-#			'(?:<dt>[^<]*</dt>\s*'+
-#			'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+
-#	        '<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+
-#	        '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
-#	    reg4 = re.compile('(?:<dd[^<]*\s*<a href="profile.php\?id=(?P<id>\d*)">(?P<name>[^<]*)</a>\s*|<dd id="friendShownName_(?P<id1>\d*)">\s*(?P<name1>[^<]*)\s*)'+'\s*</dd>\s*'+'(?:<dt>[^<]*</dt>\s*'+'<dd>(?:(?P<uni>[^<\']*)\'(?P<year>\d*)|(?P<univer>[^<\']*\s*))</dd>\s*<dt>[^<]*</dt>\s*'+'<dd>(?P<faculty>[^<]*)</dd>\s*<dt>[^<]*</dt>\s*'+ '(<dd>(?P<dept>[^<]*)\s*</dd>|)|)')
-
-
+		    u'<script>friendsInfo\s*=\s*(?P<js>.*?)</script>',re.DOTALL)
 
 	    m=regex.search(lines)
 	    persons={}
-	    while m:
-			if m.group('id'):	
-				idnum=m.group('id').rstrip().lstrip()
-				name=m.group('name').rstrip().lstrip().decode('cp1251')
-			elif m.group('id1'):	
-                                mg = m.group('id1')
-				idnum=mg.rstrip().lstrip()
-				name=m.group('name').rstrip().lstrip().decode('cp1251')
-				
-			pdata=PersonData(idnum,name)
-			if m.group('uni') or m.group('univer'):
-				if m.group('uni'):
-					pdata.univer=m.group('uni').rstrip().lstrip().decode('cp1251')
-	
-					pdata.year=m.group('year').rstrip().lstrip().decode('cp1251')
-	
-				else:	
-					pdata.univer=m.group('univer').rstrip().lstrip().decode('cp1251')
-#				if m.group('faculty'):
-#					pdata.faculty=m.group('faculty').rstrip().lstrip().decode('cp1251')
-#				if m.group('dept'):	
-#						pdata.dept=m.group('dept').rstrip().lstrip().decode('cp1251')
-	
-	#		try:
-	#		except IndexError:
-	#			print idnum,name	
-			persons[idnum]=pdata
-			m=regex.search(lines,m.end())
+	    if m and m.group('js'):
+		    data=demjson.decode(m.group('js').decode('cp1251'))
+		    for p in data['list']:
+			    pdata=PersonData(str(p[0]),p[1]['f']+' '+p[1]['l'])
+			    persons[str(p[0])]=pdata
+
 	    return persons
 
 class AddFof(threading.Thread):
